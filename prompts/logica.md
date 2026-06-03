@@ -1,3 +1,37 @@
+# Prompts
+
+## Promp 1
+Actúa como un Arquitecto de Software Senior en Python. Estamos desarrollando el "Motor" (Backend) para el sistema EPIC Playground. Nuestra única responsabilidad es recibir un JSON, procesar la lógica y devolver el JSON modificado. Debemos usar Pydantic para validar estrictamente la entrada.
+
+Objetivo: Generar el archivo `models/snapshot.py`.
+
+Requisitos: 
+1. Crea un Enum `EvidentialValue` para los valores: "V", "F", "N", "B". 
+2. Define los modelos para la capa lógica: `LogicVariable` (id, value), `LogicRelation` (id, source, target, connective, is_contrapositive con default False) y `LogicSet`. 
+3. Agrupa lo anterior en un modelo `LogicGraph`. 
+4. Define los modelos para el rastro de ejecución que el Motor debe generar: `ExecutionAction` (step, variable_id, old_value, new_value, description, is_stabilized) y `ExecutionTrace` (actions, stabilized, total_iterations). 
+5. Define `PlaygroundMeta` con un `max_iterations` (default 100). 
+6. Crea el modelo raíz `PlaygroundSnapshot`. Debe contener `meta`, `logic`, `execution_trace` (Opcional) y un campo `visual` tipado como `Dict[str, Any]`. Nota Crítica: El campo `visual` debe aceptar cualquier estructura de diccionario sin validarla, ya que el motor debe tener "ceguera espacial" y simplemente devolver esos datos intactos al front-end.
+
+Entregable: Solo el código en Python bien tipado para `models/snapshot.py`.
+
+## Prompt 2
+Actúa como un Arquitecto de Software Senior en Python. En el paso anterior creamos los contratos de datos en Pydantic (`models/snapshot.py`). Ahora vamos a crear el núcleo matemático puro del motor en la carpeta `core/`.
+Objetivo: Generar dos archivos: `core/belnap.py` y `core/connectives.py` basados en la teoría de conjuntos admisibles (restricción monotónica) para la lógica de Belnap de 4 valores ("V", "F", "N", "B").
+Requisitos para `core/belnap.py`: 
+1. Crea una clase `VariableState`. Esta clase representará el estado en memoria de una variable lógica durante el cálculo. 
+2. Debe inicializarse con un `admissible = {"V", "F", "N", "B"}` (un Set de Python) y un `effective = "N"`. 
+3. Implementa el método `restrict(self, allowed: Set[str]) -> bool`. Este método intersectará el set `allowed` con `admissible`. Si el tamaño cambia, debe recalcular `effective` seleccionando el mínimo basado en el orden de información: N < V, F < B. (Retorna True si hubo cambio, False si no).
+
+Requisitos para `core/connectives.py`: 
+1. Importa `VariableState` de `belnap.py`. 
+2. Crea una clase `ImplicationMatrix`. Su constructor debe recibir `p` (antecedente), `q` (consecuente) y `z` (resultado de la implicación), los tres de tipo `VariableState`. 
+3. Implementa el método `evaluate(self) -> bool` que aplique la propagación hacia adelante (UI+) y hacia atrás (UI-) mediante restricciones de conjuntos. 
+4. Regla UI+: Si `z` tiene evidencia positiva (ej. su `effective` está en {"V", "B"}) y `p.effective == "V"`, entonces fuerza `q.restrict({"V", "B"})`. 
+5. Regla UI-: Si `z` tiene evidencia positiva y `q.effective == "F"`, entonces fuerza `p.restrict({"F", "B"})`. 6. Retorna `True` si alguna variable (`p`, `q`, o `z`) sufrió una mutación en sus conjuntos admisibles.
+
+Entregable: Proporciona el código en Python para ambos archivos (`belnap.py` y `connectives.py`). Asegúrate de que no dependan de Pydantic, deben ser matemáticas puras.
+
 
 ## Prompt 3
 Actúa como un Arquitecto de Software Senior en Python. Tenemos los modelos en Pydantic (models/snapshot.py) y el núcleo matemático (core/belnap.py y core/connectives.py). Ahora vamos a crear el servicio principal que une todo.
